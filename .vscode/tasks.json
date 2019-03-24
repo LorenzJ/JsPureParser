@@ -1,0 +1,17 @@
+{
+    // See https://go.microsoft.com/fwlink/?LinkId=733558
+    // for the documentation about the tasks.json format
+    "version": "2.0.0",
+    "tasks": [
+        {
+            "label": "rollup watch",
+            "type": "shell",
+            "command": "rollup -f iife -i src/test.js -o build/test.js -m build/test.js.map -w"
+        }, 
+        {
+            "label": "rollup test",
+            "type": "shell",
+            "command": "rollup -f cjs -i src/test.js -o test/build.js -m test/test.js.map -w"
+        }
+    ]
+}
