@@ -64,7 +64,7 @@ const eof = stream => {
     if (result instanceof Failure) {
         return new Success(undefined, stream);
     } else {
-        return new Failure("Expected eof, got: " + result.value);
+        return new Failure("Expected eof, got: " + result.value, stream);
     }
 }
 
