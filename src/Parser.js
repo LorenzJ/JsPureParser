@@ -24,6 +24,10 @@ const optional = parser => stream => {
         return result;
     }
 }
+        
+const withDefault = x => parser =>
+    map (optional (parser))
+        (option => option ? option : x);
 
 const pipe = ([head, ...tail]) =>
     head === undefined ?
@@ -87,15 +91,13 @@ const many = parser => stream => {
     }
 }
 
-// many1 = (parser >> parser*)
-// manySepBy = (opt(parser >> many(',' >> parser)))
-// manySepEndBy = (opt(parser >> many(',' >> parser) >> opt(',')))
 const many1 = parser =>
     bind
         (parser)
         (head => map
             (many (parser))
             (tail => [head].concat(tail)));
+
 const manySepEndBy = parser => separator =>
     bind
         (optional (pipe ([parser, optional(separator)])))
@@ -190,15 +192,13 @@ const choice = parsers => stream => {
     return choice_(parsers, [], stream);
 }
 
-
-
-
-
 export default {
     return: return_,
     fail: fail,
     bind: bind,
     map: map,
+    optional: optional,
+    withDefault: withDefault,
     position: position,
     char: char,
     any: any,
@@ -211,7 +211,6 @@ export default {
     manySepBy: manySepBy,
     many1SepBy: many1SepBy,
     integer: integer,
-    optional: optional,
     pipe: pipe,
     choice: choice,
     do: do_

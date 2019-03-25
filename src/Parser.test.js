@@ -19,6 +19,29 @@ describe("Parser", () => {
         expect(result.value).toBe(5);
     });
 
+    describe ("withDefault", () => {
+        const parser = Parser.bind
+            (Parser.withDefault (0) (Parser.integer))
+            (i => Parser.map
+                (Parser.any)
+                (a => "" + i + a));
+
+        test("Default is returned when parser fails", () => {
+            const stream = CharStream.FromString("a");
+            const result = parser (stream);
+            expect(result).toBeInstanceOf(Success);
+            expect(result.value).toBe("0a");
+        });
+        
+        test("Parsed value is returned when parser succeeds", () => {
+            const stream = CharStream.FromString("1a");
+            const result = parser (stream);
+            expect(result).toBeInstanceOf(Success);
+            expect(result.value).toBe("1a");
+        });
+    });
+    
+
     describe("many", () => {
         test("many succeeds on empty input", () => {
             const stream = CharStream.FromString("");
