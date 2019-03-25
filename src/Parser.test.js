@@ -363,7 +363,7 @@ describe("Parser", () => {
     });
 
     describe("JSON", () => {
-        
+
         test("Parse json", () => {
             const ws = 
                 Parser.many(
@@ -385,7 +385,7 @@ describe("Parser", () => {
             const array = between (symbol ('[')) (symbol (']')) (Parser.manySepBy (value) (symbol (',')));
             const object = between (symbol ('{')) (symbol ('}')) (Parser.manySepBy (keyValuePair) (symbol (',')));
             
-            const parser = Parser.do ({ first: [ws], apply: value, then: [ws] });
+            const parser = Parser.do ({ first: [ws], apply: value, then: [ws, Parser.eof] });
             const stream = CharStream.FromString('["abc", 5, 6, {"x": 5, "obj": { "arr": [1, [2]]}}]');
             
             const result = parser (stream);
