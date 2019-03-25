@@ -96,76 +96,52 @@ const many1 = parser =>
             (many (parser))
             (tail => [head].concat(tail)));
 
-const manySepEndBy = parser => separator =>
-    bind
-        (optional (pipe ([parser, optional(separator)])))
-        (value => {
-            if (!value) {
-                return return_ ([]);
-            } else if (!value[1]) {
-                return return_([value[0]]);
-            } else {
-                return map
-                    (many(do_ ({ apply: parser, then: [optional(separator)] })))
-                    (tail => [value[0]].concat(tail));
-            }
-        });
+const manySepEndBy = parser => separator => stream =>
+    bind (optional (parser))
+        (head => stream_ => head === undefined
+            ? return_ ([]) (stream_)
+            : stream === stream_
+            ? fail ("infinite loop detected.") (stream)
+            : bind (optional (separator))
+                (sep => sep === undefined
+                    ? return_ ([head])
+                    : map (manySepEndBy (parser) (separator))
+                        (tail => [].concat([head], tail)))
+                (stream_))
+        (stream);
 
-const many1SepEndBy = parser => separator => 
-    bind 
-        (parser)
-        (head => stream => {
-            const sep = separator (stream);
-            if (sep instanceof Failure) {
-                return new Success([head], stream);
-            } else {
-                return map
-                    (manySepEndBy (parser) (separator))
-                    (value => [head].concat(value))
-                    (sep.stream);
-            }
-        });
-
-const manySepBy = parser => separator => stream => {
-    const result = parser (stream);
-    if (result instanceof Failure) {
-        return new Success([], stream);
-    } else {
-        const separatorResult = separator (result.stream);
-        if (separatorResult instanceof Failure) {
-            return new Success([result.value], result.stream);
-        } else {
-            if (stream === separatorResult.stream) {
-                return new Failure("Infinite loop detected.", stream);
-            } else {
-                return map
-                    (many1SepBy (parser) (separator))
-                    (tail => [result.value].concat(tail))
-                    (separatorResult.stream);
-            }
-        }
-    }
-}
+const many1SepEndBy = parser => separator =>
+    bind (parser)
+        (head => bind (optional (separator))
+            (sep =>sep === undefined
+                ? return_ ([head])
+                : map (manySepEndBy (parser) (separator))
+                    (tail => [].concat([head], tail))));
 
 const many1SepBy = parser => separator => stream =>
-    bind
-        (parser)
-        (head => stream_ => {
-            const separatorResult = separator (stream_);
-            if (separatorResult instanceof Failure) {
-                return new Success([head], stream_);
-            } else {
-                if (stream === separatorResult.stream) {
-                    return new Failure("Infinite loop detected.", stream);
-                } else {
-                    return map
-                        (many1SepBy (parser) (separator))
-                        (tail => [head].concat(tail))
-                        (separatorResult.stream);
-                }
-            }
-        })
+    bind (parser)
+        (head => stream_ => head === undefined
+            ? return_ ([]) (stream_)
+            : stream === stream_
+            ? fail ("infinite loop detected.") (stream)
+            : bind (optional (separator))
+                (sep => sep === undefined
+                    ? return_ ([head])
+                    : map (many1SepBy (parser) (separator))
+                        (tail => [].concat([head], tail)))
+                (stream_))
         (stream);
+
+const manySepBy = parser => separator => 
+    bind (optional (parser))
+        (head => head === undefined
+            ? return_ ([])
+            : bind (optional (separator))
+            (sep =>sep === undefined
+                ? return_ ([head])
+                : map (many1SepBy (parser) (separator))
+                    (tail => [].concat([head], tail))));
+
 
 const integer =
     map
