@@ -32,10 +32,8 @@ const withDefault = x => parser =>
 const pipe = ([head, ...tail]) =>
     head === undefined ?
         return_ ([]) :
-        bind
-            (head)
-            (h => map
-                (pipe (tail))
+        bind (head)
+            (h => map (pipe (tail))
                 (t => [h].concat(t)));
 
 const ignore = ([head, ...tail]) => 
@@ -44,13 +42,10 @@ const ignore = ([head, ...tail]) =>
         bind (head) (_ => ignore (tail));
 
 const do_ = ({first = [], apply, then = []}) => 
-    bind
-        (ignore (first))
-        (_ => bind
-            (apply)
-            (value => map
-                (ignore (then))
-                (_ => value)));
+    bind(ignore (first))
+        (_ => bind (apply)
+            (value => map (ignore (then))
+            (_ => value)));
 
 const any = stream => {
     const { char, stream: stream1 } = stream.advance();
@@ -69,31 +64,26 @@ const eof = stream => {
 }
 
  const char = predicate =>
-    bind
-        (any)
+    bind (any)
         (x => predicate (x) ? 
             return_ (x) : 
             fail (x + "does not match predicate."));
 
 const many = parser => stream =>
-    bind 
-        (optional (parser))
+    bind (optional (parser))
         (head => stream_ =>
             head === undefined ?
                 return_ ([]) (stream_) :
             stream === stream_ ?
                 fail ("infinite loop detected.") (stream) :
-                map
-                    (many (parser))
+                map (many (parser))
                     (tail => [].concat([head], tail))
                     (stream_))
         (stream);
 
 const many1 = parser =>
-    bind
-        (parser)
-        (head => map
-            (many (parser))
+    bind (parser)
+        (head => map (many (parser))
             (tail => [head].concat(tail)));
 
 const manySepEndBy = parser => separator => stream =>
@@ -141,7 +131,6 @@ const manySepBy = parser => separator =>
                 ? return_ ([head])
                 : map (many1SepBy (parser) (separator))
                     (tail => [].concat([head], tail))));
-
 
 const integer =
     map
