@@ -20,6 +20,7 @@
     "test": "jest && npm run build"
   },
   "author": "LorenzJ",
+  "repository": "https://github.com/LorenzJ/JsPureParser",
   "license": "MIT",
   "browser": "build/browser.js",
   "main": "build/main.js",
