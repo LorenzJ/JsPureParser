@@ -89,22 +89,6 @@ const many = parser => stream =>
                     (stream_))
         (stream);
 
-/*const many = parser => stream => {
-    const result = parser (stream);
-    if (result instanceof Failure) {
-        return new Success([], stream);
-    } else {
-        if (result.stream === stream) {
-            return new Failure("Infinite loop detected.", stream);
-        } else {
-            return map 
-                (many (parser))
-                (value => [result.value].concat(value))
-                (result.stream)
-        }
-    }
-}*/
-
 const many1 = parser =>
     bind
         (parser)
@@ -141,7 +125,6 @@ const many1SepEndBy = parser => separator =>
                     (sep.stream);
             }
         });
-
 
 const manySepBy = parser => separator => stream => {
     const result = parser (stream);

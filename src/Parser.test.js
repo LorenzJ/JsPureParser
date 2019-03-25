@@ -3,7 +3,7 @@ import CharStream from './CharStream';
 import { Success, Failure } from './Result';
 
 describe("Parser", () => {
-    
+
     test("return", () => {
         const parser = Parser.return (0);
         const result = parser (null);
@@ -43,7 +43,6 @@ describe("Parser", () => {
         });
     });
     
-
     describe("many", () => {
 
         test("many succeeds on empty input", () => {
@@ -110,6 +109,7 @@ describe("Parser", () => {
     })
     
     describe("manySepEndBy", () => {
+
         test("manySepEndBy succeeds on empty input", () => {
             const stream = CharStream.FromString("");
             const parser = Parser.manySepEndBy (Parser.integer) (Parser.char (c => c === ','));
@@ -151,6 +151,7 @@ describe("Parser", () => {
     })
     
     describe("many1SepEndBy", () => {
+
         test("many1SepEndBy fails on empty input", () => {
             const stream = CharStream.FromString("");
             const parser = Parser.many1SepEndBy (Parser.any) (Parser.any);
@@ -183,6 +184,7 @@ describe("Parser", () => {
     });
     
     describe("many1SepBy", () => {
+
         test("many1SepBy fails on empty input", () => {
             const stream = CharStream.FromString("");
             const parser = Parser.many1SepBy (Parser.any) (Parser.any);
@@ -221,6 +223,7 @@ describe("Parser", () => {
     });
     
     describe("manySepBy", () => {
+
         test("manySepBy succeeds on empty input", () => {
             const stream = CharStream.FromString("");
             const parser = Parser.manySepBy (Parser.any) (Parser.any);
@@ -254,6 +257,7 @@ describe("Parser", () => {
     });
     
     describe("choice", () => {
+
         test("choice succeeds on any match", () => {
             const stream = CharStream.FromString("a12a10b");
             const parser = Parser.many1 (Parser.choice ([Parser.integer, Parser.char (c => c === 'a')]));
@@ -359,6 +363,7 @@ describe("Parser", () => {
     });
 
     describe("JSON", () => {
+        
         test("Parse json", () => {
             const ws = 
                 Parser.many(
