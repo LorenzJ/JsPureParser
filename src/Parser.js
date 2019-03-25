@@ -75,7 +75,21 @@ const eof = stream => {
             return_ (x) : 
             fail (x + "does not match predicate."));
 
-const many = parser => stream => {
+const many = parser => stream =>
+    bind 
+        (optional (parser))
+        (head => stream_ =>
+            head === undefined ?
+                return_ ([]) (stream_) :
+            stream === stream_ ?
+                fail ("infinite loop detected.") (stream) :
+                map
+                    (many (parser))
+                    (tail => [].concat([head], tail))
+                    (stream_))
+        (stream);
+
+/*const many = parser => stream => {
     const result = parser (stream);
     if (result instanceof Failure) {
         return new Success([], stream);
@@ -89,7 +103,7 @@ const many = parser => stream => {
                 (result.stream)
         }
     }
-}
+}*/
 
 const many1 = parser =>
     bind

@@ -3,6 +3,7 @@ import CharStream from './CharStream';
 import { Success, Failure } from './Result';
 
 describe("Parser", () => {
+    
     test("return", () => {
         const parser = Parser.return (0);
         const result = parser (null);
@@ -20,6 +21,7 @@ describe("Parser", () => {
     });
 
     describe ("withDefault", () => {
+
         const parser = Parser.bind
             (Parser.withDefault (0) (Parser.integer))
             (i => Parser.map
@@ -32,7 +34,7 @@ describe("Parser", () => {
             expect(result).toBeInstanceOf(Success);
             expect(result.value).toBe("0a");
         });
-        
+
         test("Parsed value is returned when parser succeeds", () => {
             const stream = CharStream.FromString("1a");
             const result = parser (stream);
@@ -43,6 +45,7 @@ describe("Parser", () => {
     
 
     describe("many", () => {
+
         test("many succeeds on empty input", () => {
             const stream = CharStream.FromString("");
             const parser = Parser.many (Parser.any);
@@ -82,6 +85,7 @@ describe("Parser", () => {
     })
     
     describe("many1", () => {
+
         test("many1 fails on empty input", () => {
             const stream = CharStream.FromString("");
             const parser = Parser.many1 (Parser.any);
