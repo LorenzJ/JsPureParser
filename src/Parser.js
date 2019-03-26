@@ -24,6 +24,18 @@ const optional = parser => stream => {
         return result;
     }
 }
+
+const string = str => stream => {
+    const str_ = ([head, ...tail]) =>
+        bind (any)
+            (c => stream_ =>
+                c === head ?
+                    (tail.length === 0 ?
+                        return_ (str) (stream_)
+                    : str_ (tail) (stream_))
+                : fail ("Got '" + c + "' expected '" + head + "'") (stream))
+    return str_ (str) (stream);
+}
         
 const withDefault = x => parser =>
     map (optional (parser))
@@ -89,11 +101,11 @@ const many1 = parser =>
 const manySepEndBy = parser => separator => stream =>
     bind (optional (parser))
         (head => stream_ => 
-            head === undefined
-                ? return_ ([]) (stream_)
-            : stream === stream_
-                ? fail ("infinite loop detected.") (stream)
-                : bind (optional (separator))
+            head === undefined ? 
+                return_ ([]) (stream_)
+            : stream === stream_ ? 
+                fail ("infinite loop detected.") (stream)
+            : bind (optional (separator))
                 (sep => sep === undefined
                     ? return_ ([head])
                     : map (manySepEndBy (parser) (separator))
@@ -104,20 +116,23 @@ const manySepEndBy = parser => separator => stream =>
 const many1SepEndBy = parser => separator =>
     bind (parser)
         (head => bind (optional (separator))
-            (sep =>sep === undefined
-                ? return_ ([head])
+            (sep =>
+                sep === undefined ? 
+                    return_ ([head])
                 : map (manySepEndBy (parser) (separator))
                     (tail => [].concat([head], tail))));
 
 const many1SepBy = parser => separator => stream =>
     bind (parser)
-        (head => stream_ => head === undefined
-            ? return_ ([]) (stream_)
-            : stream === stream_
-            ? fail ("infinite loop detected.") (stream)
+        (head => stream_ => 
+            head === undefined ? 
+                return_ ([]) (stream_)
+            : stream === stream_ ?
+                fail ("infinite loop detected.") (stream)
             : bind (optional (separator))
-                (sep => sep === undefined
-                    ? return_ ([head])
+                (sep => 
+                    sep === undefined ? 
+                        return_ ([head])
                     : map (many1SepBy (parser) (separator))
                         (tail => [].concat([head], tail)))
                 (stream_))
@@ -164,6 +179,7 @@ export default {
     withDefault: withDefault,
     position: position,
     char: char,
+    string: string,
     any: any,
     eof: eof,
     lazy: lazy,

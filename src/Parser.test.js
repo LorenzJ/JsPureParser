@@ -20,6 +20,20 @@ describe("Parser", () => {
         expect(result.value).toBe(5);
     });
 
+    test("string", () => {
+        const parser = Parser.string ("Hello");
+        
+        const result1 = parser (CharStream.FromString("Hello!!!"));
+        expect(result1).toBeInstanceOf(Success);
+        expect(result1.value).toBe("Hello");
+
+        const result2 = parser (CharStream.FromString("Olleh"));
+        expect(result2).toBeInstanceOf(Failure);
+
+        const result3 = parser (CharStream.FromString("He"));
+        expect(result3).toBeInstanceOf(Failure);
+    });
+
     describe ("withDefault", () => {
 
         const parser = Parser.bind

@@ -292,10 +292,36 @@
     };
   };
 
-  var pipe = function pipe(_ref) {
-    var _ref2 = _toArray(_ref),
-        head = _ref2[0],
-        tail = _ref2.slice(1);
+  var string = function string(str) {
+    return function (stream) {
+      var str_ = function str_(_ref) {
+        var _ref2 = _toArray(_ref),
+            head = _ref2[0],
+            tail = _ref2.slice(1);
+
+        return bind(any)(function (c) {
+          return function (stream_) {
+            return c === head ? tail.length === 0 ? return_(str)(stream_) : str_(tail)(stream_) : fail("Got '" + c + "' expected '" + head + "'")(stream);
+          };
+        });
+      };
+
+      return str_(str)(stream);
+    };
+  };
+
+  var withDefault = function withDefault(x) {
+    return function (parser) {
+      return map(optional(parser))(function (option) {
+        return option ? option : x;
+      });
+    };
+  };
+
+  var pipe = function pipe(_ref3) {
+    var _ref4 = _toArray(_ref3),
+        head = _ref4[0],
+        tail = _ref4.slice(1);
 
     return head === undefined ? return_([]) : bind(head)(function (h) {
       return map(pipe(tail))(function (t) {
@@ -304,22 +330,22 @@
     });
   };
 
-  var ignore = function ignore(_ref3) {
-    var _ref4 = _toArray(_ref3),
-        head = _ref4[0],
-        tail = _ref4.slice(1);
+  var ignore = function ignore(_ref5) {
+    var _ref6 = _toArray(_ref5),
+        head = _ref6[0],
+        tail = _ref6.slice(1);
 
     return head === undefined ? return_(undefined) : bind(head)(function (_) {
       return ignore(tail);
     });
   };
 
-  var do_ = function do_(_ref5) {
-    var _ref5$first = _ref5.first,
-        first = _ref5$first === void 0 ? [] : _ref5$first,
-        apply = _ref5.apply,
-        _ref5$then = _ref5.then,
-        then = _ref5$then === void 0 ? [] : _ref5$then;
+  var do_ = function do_(_ref7) {
+    var _ref7$first = _ref7.first,
+        first = _ref7$first === void 0 ? [] : _ref7$first,
+        apply = _ref7.apply,
+        _ref7$then = _ref7.then,
+        then = _ref7$then === void 0 ? [] : _ref7$then;
     return bind(ignore(first))(function (_) {
       return bind(apply)(function (value) {
         return map(ignore(then))(function (_) {
@@ -343,7 +369,7 @@
     if (result instanceof Failure) {
       return new Success(undefined, stream);
     } else {
-      return new Failure("Expected eof, got: " + result.value);
+      return new Failure("Expected eof, got: " + result.value, stream);
     }
   };
 
@@ -355,24 +381,15 @@
 
   var many = function many(parser) {
     return function (stream) {
-      var result = parser(stream);
-
-      if (result instanceof Failure) {
-        return new Success([], stream);
-      } else {
-        if (result.stream === stream) {
-          return new Failure("Infinite loop detected.", stream);
-        } else {
-          return map(many(parser))(function (value) {
-            return [result.value].concat(value);
-          })(result.stream);
-        }
-      }
+      return bind(optional(parser))(function (head) {
+        return function (stream_) {
+          return head === undefined ? return_([])(stream_) : stream === stream_ ? fail("infinite loop detected.")(stream) : map(many(parser))(function (tail) {
+            return [].concat([head], tail);
+          })(stream_);
+        };
+      })(stream);
     };
-  }; // many1 = (parser >> parser*)
-  // manySepBy = (opt(parser >> many(',' >> parser)))
-  // manySepEndBy = (opt(parser >> many(',' >> parser) >> opt(',')))
-
+  };
 
   var many1 = function many1(parser) {
     return bind(parser)(function (head) {
@@ -384,64 +401,29 @@
 
   var manySepEndBy = function manySepEndBy(parser) {
     return function (separator) {
-      return bind(optional(pipe([parser, optional(separator)])))(function (value) {
-        if (!value) {
-          return return_([]);
-        } else if (!value[1]) {
-          return return_([value[0]]);
-        } else {
-          return map(many(do_({
-            apply: parser,
-            then: [optional(separator)]
-          })))(function (tail) {
-            return [value[0]].concat(tail);
-          });
-        }
-      });
+      return function (stream) {
+        return bind(optional(parser))(function (head) {
+          return function (stream_) {
+            return head === undefined ? return_([])(stream_) : stream === stream_ ? fail("infinite loop detected.")(stream) : bind(optional(separator))(function (sep) {
+              return sep === undefined ? return_([head]) : map(manySepEndBy(parser)(separator))(function (tail) {
+                return [].concat([head], tail);
+              });
+            })(stream_);
+          };
+        })(stream);
+      };
     };
   };
 
   var many1SepEndBy = function many1SepEndBy(parser) {
     return function (separator) {
       return bind(parser)(function (head) {
-        return function (stream) {
-          var sep = separator(stream);
-
-          if (sep instanceof Failure) {
-            return new Success([head], stream);
-          } else {
-            return map(manySepEndBy(parser)(separator))(function (value) {
-              return [head].concat(value);
-            })(sep.stream);
-          }
-        };
+        return bind(optional(separator))(function (sep) {
+          return sep === undefined ? return_([head]) : map(manySepEndBy(parser)(separator))(function (tail) {
+            return [].concat([head], tail);
+          });
+        });
       });
-    };
-  };
-
-  var manySepBy = function manySepBy(parser) {
-    return function (separator) {
-      return function (stream) {
-        var result = parser(stream);
-
-        if (result instanceof Failure) {
-          return new Success([], stream);
-        } else {
-          var separatorResult = separator(result.stream);
-
-          if (separatorResult instanceof Failure) {
-            return new Success([result.value], result.stream);
-          } else {
-            if (stream === separatorResult.stream) {
-              return new Failure("Infinite loop detected.", stream);
-            } else {
-              return map(many1SepBy(parser)(separator))(function (tail) {
-                return [result.value].concat(tail);
-              })(separatorResult.stream);
-            }
-          }
-        }
-      };
     };
   };
 
@@ -450,22 +432,26 @@
       return function (stream) {
         return bind(parser)(function (head) {
           return function (stream_) {
-            var separatorResult = separator(stream_);
-
-            if (separatorResult instanceof Failure) {
-              return new Success([head], stream_);
-            } else {
-              if (stream === separatorResult.stream) {
-                return new Failure("Infinite loop detected.", stream);
-              } else {
-                return map(many1SepBy(parser)(separator))(function (tail) {
-                  return [head].concat(tail);
-                })(separatorResult.stream);
-              }
-            }
+            return head === undefined ? return_([])(stream_) : stream === stream_ ? fail("infinite loop detected.")(stream) : bind(optional(separator))(function (sep) {
+              return sep === undefined ? return_([head]) : map(many1SepBy(parser)(separator))(function (tail) {
+                return [].concat([head], tail);
+              });
+            })(stream_);
           };
         })(stream);
       };
+    };
+  };
+
+  var manySepBy = function manySepBy(parser) {
+    return function (separator) {
+      return bind(optional(parser))(function (head) {
+        return head === undefined ? return_([]) : bind(optional(separator))(function (sep) {
+          return sep === undefined ? return_([head]) : map(many1SepBy(parser)(separator))(function (tail) {
+            return [].concat([head], tail);
+          });
+        });
+      });
     };
   };
 
@@ -504,8 +490,11 @@
     fail: fail,
     bind: bind,
     map: map,
+    optional: optional,
+    withDefault: withDefault,
     position: position,
     char: char,
+    string: string,
     any: any,
     eof: eof,
     lazy: lazy,
@@ -516,18 +505,14 @@
     manySepBy: manySepBy,
     many1SepBy: many1SepBy,
     integer: integer,
-    optional: optional,
     pipe: pipe,
     choice: choice,
     do: do_
   };
 
   function test() {
-    var stream = CharStream.FromString("1,2,123 ab");
-    var parser = Parser.manySepEndBy(Parser.integer)(Parser.char(function (c) {
-      return c === ',';
-    }));
-    var result = parser(stream);
+    var parser = Parser.string("H");
+    var result = parser(CharStream.FromString("H"));
   }
 
   test();

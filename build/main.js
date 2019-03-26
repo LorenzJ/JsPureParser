@@ -85,13 +85,27 @@ const optional = parser => stream => {
     }
 };
 
+const string = str => stream => {
+    const str_ = ([head, ...tail]) =>
+        bind (any)
+            (c => stream_ =>
+                c === head ?
+                    (tail.length === 0 ?
+                        return_ (str) (stream_)
+                    : str_ (tail) (stream_))
+                : fail ("Got '" + c + "' expected '" + head + "'") (stream));
+    return str_ (str) (stream);
+};
+        
+const withDefault = x => parser =>
+    map (optional (parser))
+        (option => option ? option : x);
+
 const pipe = ([head, ...tail]) =>
     head === undefined ?
         return_ ([]) :
-        bind
-            (head)
-            (h => map
-                (pipe (tail))
+        bind (head)
+            (h => map (pipe (tail))
                 (t => [h].concat(t)));
 
 const ignore = ([head, ...tail]) => 
@@ -100,13 +114,10 @@ const ignore = ([head, ...tail]) =>
         bind (head) (_ => ignore (tail));
 
 const do_ = ({first = [], apply, then = []}) => 
-    bind
-        (ignore (first))
-        (_ => bind
-            (apply)
-            (value => map
-                (ignore (then))
-                (_ => value)));
+    bind(ignore (first))
+        (_ => bind (apply)
+            (value => map (ignore (then))
+            (_ => value)));
 
 const any = stream => {
     const { char, stream: stream1 } = stream.advance();
@@ -120,113 +131,82 @@ const eof = stream => {
     if (result instanceof Failure) {
         return new Success(undefined, stream);
     } else {
-        return new Failure("Expected eof, got: " + result.value);
+        return new Failure("Expected eof, got: " + result.value, stream);
     }
 };
 
  const char = predicate =>
-    bind
-        (any)
+    bind (any)
         (x => predicate (x) ? 
             return_ (x) : 
             fail (x + "does not match predicate."));
 
-const many = parser => stream => {
-    const result = parser (stream);
-    if (result instanceof Failure) {
-        return new Success([], stream);
-    } else {
-        if (result.stream === stream) {
-            return new Failure("Infinite loop detected.", stream);
-        } else {
-            return map 
-                (many (parser))
-                (value => [result.value].concat(value))
-                (result.stream)
-        }
-    }
-};
+const many = parser => stream =>
+    bind (optional (parser))
+        (head => stream_ =>
+            head === undefined ?
+                return_ ([]) (stream_) :
+            stream === stream_ ?
+                fail ("infinite loop detected.") (stream) :
+                map (many (parser))
+                    (tail => [].concat([head], tail))
+                    (stream_))
+        (stream);
 
-// many1 = (parser >> parser*)
-// manySepBy = (opt(parser >> many(',' >> parser)))
-// manySepEndBy = (opt(parser >> many(',' >> parser) >> opt(',')))
 const many1 = parser =>
-    bind
-        (parser)
-        (head => map
-            (many (parser))
+    bind (parser)
+        (head => map (many (parser))
             (tail => [head].concat(tail)));
-const manySepEndBy = parser => separator =>
-    bind
-        (optional (pipe ([parser, optional(separator)])))
-        (value => {
-            if (!value) {
-                return return_ ([]);
-            } else if (!value[1]) {
-                return return_([value[0]]);
-            } else {
-                return map
-                    (many(do_ ({ apply: parser, then: [optional(separator)] })))
-                    (tail => [value[0]].concat(tail));
-            }
-        });
 
-const many1SepEndBy = parser => separator => 
-    bind 
-        (parser)
-        (head => stream => {
-            const sep = separator (stream);
-            if (sep instanceof Failure) {
-                return new Success([head], stream);
-            } else {
-                return map
-                    (manySepEndBy (parser) (separator))
-                    (value => [head].concat(value))
-                    (sep.stream);
-            }
-        });
+const manySepEndBy = parser => separator => stream =>
+    bind (optional (parser))
+        (head => stream_ => 
+            head === undefined ? 
+                return_ ([]) (stream_)
+            : stream === stream_ ? 
+                fail ("infinite loop detected.") (stream)
+            : bind (optional (separator))
+                (sep => sep === undefined
+                    ? return_ ([head])
+                    : map (manySepEndBy (parser) (separator))
+                        (tail => [].concat([head], tail)))
+                (stream_))
+        (stream);
 
-
-const manySepBy = parser => separator => stream => {
-    const result = parser (stream);
-    if (result instanceof Failure) {
-        return new Success([], stream);
-    } else {
-        const separatorResult = separator (result.stream);
-        if (separatorResult instanceof Failure) {
-            return new Success([result.value], result.stream);
-        } else {
-            if (stream === separatorResult.stream) {
-                return new Failure("Infinite loop detected.", stream);
-            } else {
-                return map
-                    (many1SepBy (parser) (separator))
-                    (tail => [result.value].concat(tail))
-                    (separatorResult.stream);
-            }
-        }
-    }
-};
+const many1SepEndBy = parser => separator =>
+    bind (parser)
+        (head => bind (optional (separator))
+            (sep =>
+                sep === undefined ? 
+                    return_ ([head])
+                : map (manySepEndBy (parser) (separator))
+                    (tail => [].concat([head], tail))));
 
 const many1SepBy = parser => separator => stream =>
-    bind
-        (parser)
-        (head => stream_ => {
-            const separatorResult = separator (stream_);
-            if (separatorResult instanceof Failure) {
-                return new Success([head], stream_);
-            } else {
-                if (stream === separatorResult.stream) {
-                    return new Failure("Infinite loop detected.", stream);
-                } else {
-                    return map
-                        (many1SepBy (parser) (separator))
-                        (tail => [head].concat(tail))
-                        (separatorResult.stream);
-                }
-            }
-        })
+    bind (parser)
+        (head => stream_ => 
+            head === undefined ? 
+                return_ ([]) (stream_)
+            : stream === stream_ ?
+                fail ("infinite loop detected.") (stream)
+            : bind (optional (separator))
+                (sep => 
+                    sep === undefined ? 
+                        return_ ([head])
+                    : map (many1SepBy (parser) (separator))
+                        (tail => [].concat([head], tail)))
+                (stream_))
         (stream);
+
+const manySepBy = parser => separator => 
+    bind (optional (parser))
+        (head => head === undefined
+            ? return_ ([])
+            : bind (optional (separator))
+            (sep =>sep === undefined
+                ? return_ ([head])
+                : map (many1SepBy (parser) (separator))
+                    (tail => [].concat([head], tail))));
 
 const integer =
     map
@@ -250,17 +230,16 @@ const choice = parsers => stream => {
     return choice_(parsers, [], stream);
 };
 
-
-
-
-
 var Parser = {
     return: return_,
     fail: fail,
     bind: bind,
     map: map,
+    optional: optional,
+    withDefault: withDefault,
     position: position,
     char: char,
+    string: string,
     any: any,
     eof: eof,
     lazy: lazy,
@@ -271,16 +250,14 @@ var Parser = {
     manySepBy: manySepBy,
     many1SepBy: many1SepBy,
     integer: integer,
-    optional: optional,
     pipe: pipe,
     choice: choice,
     do: do_
 };
 
 function test() {
-    const stream = CharStream.FromString("1,2,123 ab");
-    const parser = Parser.manySepEndBy (Parser.integer) (Parser.char (c => c === ','));
-    const result = parser (stream);
+    const parser = Parser.string ("H");
+    const result = parser (CharStream.FromString("H"));
 }
 
 test();
