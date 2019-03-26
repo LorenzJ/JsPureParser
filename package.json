@@ -5,6 +5,7 @@
   "devDependencies": {
     "@babel/core": "7.4.0",
     "@babel/preset-env": "^7.4.2",
+    "@types/jest": "22.2.3",
     "babel-core": "7.0.0-bridge.0",
     "babel-jest": "24.5.0",
     "jest": "24.5.0",
