@@ -88,11 +88,12 @@ const many1 = parser =>
 
 const manySepEndBy = parser => separator => stream =>
     bind (optional (parser))
-        (head => stream_ => head === undefined
-            ? return_ ([]) (stream_)
+        (head => stream_ => 
+            head === undefined
+                ? return_ ([]) (stream_)
             : stream === stream_
-            ? fail ("infinite loop detected.") (stream)
-            : bind (optional (separator))
+                ? fail ("infinite loop detected.") (stream)
+                : bind (optional (separator))
                 (sep => sep === undefined
                     ? return_ ([head])
                     : map (manySepEndBy (parser) (separator))
