@@ -372,7 +372,11 @@ describe("Parser", () => {
             const between = start => end => p => Parser.do ({first: [start], apply: p, then: [end]});
             const symbol = s => followedByWs (Parser.char (c => c === s));
 
-            const value = Parser.lazy(() => Parser.choice([number, string, array, object]));
+            const value = Parser.lazy(() => Parser.choice([null_, true_, false_, number, string, array, object]));
+            const null_ = Parser.map (followedByWs (Parser.string ("null"))) (_ => null);
+            const true_ = Parser.map (followedByWs (Parser.string ("true"))) (_ => true);
+            const false_ = Parser.map (followedByWs (Parser.string ("false"))) (_ => false);
+            expect(false_(CharStream.FromString("false"))).toBe(false);
             const number = followedByWs (Parser.integer);
             const string = 
                 Parser.map
