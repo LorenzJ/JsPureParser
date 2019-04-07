@@ -16,6 +16,9 @@ const map = parser => f =>
     bind (parser)
         (x => return_ (f (x)));
 
+let apply = parser => f =>
+    bind(f) (f => map (parser) (f));
+
 const optional = parser => stream => {
     const result = parser (stream);
     if (result instanceof Failure) {
@@ -80,7 +83,7 @@ const eof = stream => {
     if (result instanceof Failure) {
         return new Success(undefined, stream);
     } else {
-        return new Failure("Expected eof, got: " + result.value, stream);
+        return new Failure(`Expected eof, got: '${result.value}'`, stream);
     }
 }
 
@@ -88,7 +91,22 @@ const eof = stream => {
     bind (any)
         (x => predicate (x) ? 
             return_ (x) : 
-            fail (x + "does not match predicate."));
+            fail (`'${x}' does not match predicate.`));
+
+const string = str => stream => {
+    const loop = i => stream_ => {
+        if (i === str.length) {
+            return new Success(str, stream_);
+        } else {
+            return bind (any)
+                (c => stream_ => c !== str[i]
+                    ? fail (`String does not match: '${str}'`) (stream)
+                    : return_ (loop(i + 1) (stream_)))
+                (stream_);
+        }
+    }
+    return loop (0) (stream);
+}
 
 const many = parser => stream =>
     bind (optional (parser))
@@ -165,7 +183,7 @@ const integer =
 const choice = parsers => stream => {
     function choice_(p, e, stream) {
         if (p.length === 0) {
-            return new Failure("Failed to parse choices: \n" + e.join("\n\t"));
+            return new Failure(`Failed to parse choices: \n ${e.join("\n\t")}`);
         } else {
             const [parser, ...tail] = p;
             const result = parser (stream);
@@ -181,26 +199,26 @@ const choice = parsers => stream => {
 
 export default {
     return: return_,
-    fail: fail,
-    bind: bind,
-    map: map,
-    optional: optional,
-    withDefault: withDefault,
-    notFollowedBy: notFollowedBy,
-    position: position,
-    char: char,
-    string: string,
-    any: any,
-    eof: eof,
-    lazy: lazy,
-    many: many,
-    many1: many1,
-    manySepEndBy: manySepEndBy,
-    many1SepEndBy: many1SepEndBy,
-    manySepBy: manySepBy,
-    many1SepBy: many1SepBy,
-    integer: integer,
-    pipe: pipe,
-    choice: choice,
+    fail,
+    bind,
+    map,
+    apply,
+    optional,
+    withDefault,
+    position,
+    char,
+    string,
+    any,
+    eof,
+    lazy,
+    many,
+    many1,
+    manySepEndBy,
+    many1SepEndBy,
+    manySepBy,
+    many1SepBy,
+    integer,
+    pipe,
+    choice,
     do: do_
 }
