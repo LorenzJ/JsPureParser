@@ -93,21 +93,6 @@ const eof = stream => {
             return_ (x) : 
             fail (`'${x}' does not match predicate.`));
 
-const string = str => stream => {
-    const loop = i => stream_ => {
-        if (i === str.length) {
-            return new Success(str, stream_);
-        } else {
-            return bind (any)
-                (c => stream_ => c !== str[i]
-                    ? fail (`String does not match: '${str}'`) (stream)
-                    : return_ (loop(i + 1) (stream_)))
-                (stream_);
-        }
-    }
-    return loop (0) (stream);
-}
-
 const many = parser => stream =>
     bind (optional (parser))
         (head => stream_ =>
@@ -199,6 +184,7 @@ const choice = parsers => stream => {
 
 export default {
     return: return_,
+    notFollowedBy,
     fail,
     bind,
     map,
