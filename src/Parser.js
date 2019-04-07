@@ -25,6 +25,15 @@ const optional = parser => stream => {
     }
 }
 
+const notFollowedBy = parser => stream => {
+    bind (optional(parser))
+        (v => s => 
+            v === undefined ?
+                return_ (true) (stream) // rollback
+                : fail ("Unexpected character: " + s.char) (s))
+        (stream);
+}
+
 const string = str => stream => {
     const str_ = ([head, ...tail]) =>
         bind (any)
@@ -177,6 +186,7 @@ export default {
     map: map,
     optional: optional,
     withDefault: withDefault,
+    notFollowedBy: notFollowedBy,
     position: position,
     char: char,
     string: string,

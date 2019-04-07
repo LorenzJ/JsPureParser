@@ -377,28 +377,49 @@ describe("Parser", () => {
     });
 
     describe("JSON", () => {
+        const ws = 
+            Parser.many(
+            Parser.char (c => c === '\t' || c === '\n' || c === ' ' || c === '\t'));
 
-        test("Parse json", () => {
-            const ws = 
-                Parser.many(
-                Parser.char (c => c === '\t' || c === '\n' || c === ' ' || c === '\t' || c === '\r'));
-            const followedByWs = p => Parser.do ({ apply: p, then: [ws]});
-            const between = start => end => p => Parser.do ({first: [start], apply: p, then: [end]});
-            const symbol = s => followedByWs (Parser.char (c => c === s));
+        const followedByWs = p => Parser.do ({ apply: p, then: [ws]});
+        const between = start => end => p => Parser.do ({first: [start], apply: p, then: [end]});
+        const symbol = s => followedByWs (Parser.char (c => c === s));
+        const keyword = s => Parser.do ({ 
+            apply: followedByWs (Parser.string (s)), 
+            then: [Parser.notFollowedBy(Parser.char (c => c.toLowerCase() >= "a" && c.toLowerCase() <= "z"))]});
 
-            const value = Parser.lazy(() => Parser.choice([number, string, array, object]));
-            const number = followedByWs (Parser.integer);
-            const string = 
-                Parser.map
-                    (between (symbol ('"')) (symbol ('"')) (followedByWs (Parser.many(Parser.char (c => c !== '"')))))
-                    (x => x.join(""));
-            const keyValuePair = 
-                Parser.pipe ([
-                    (Parser.do ({ apply: string, then: [symbol(':')]})),
-                    (value)]);
-            const array = between (symbol ('[')) (symbol (']')) (Parser.manySepBy (value) (symbol (',')));
-            const object = between (symbol ('{')) (symbol ('}')) (Parser.manySepBy (keyValuePair) (symbol (',')));
-            
+        const value = Parser.lazy(() => Parser.choice([null_, true_, false_, number, string, array, object]));
+        const null_ = Parser.map (keyword ("null")) (_ => null);
+        const true_ = Parser.map (keyword ("true")) (_ => true);
+        const false_ = Parser.map (keyword ("false")) (_ => false);
+        const number = followedByWs (Parser.integer);
+        const string = 
+            Parser.map
+                (between (symbol ('"')) (symbol ('"')) (followedByWs (Parser.many(Parser.char (c => c !== '"')))))
+                (x => x.join(""));
+        const keyValuePair = 
+            Parser.pipe ([
+                (Parser.do ({ apply: string, then: [symbol(':')]})),
+                (value)]);
+        const array = between (symbol ('[')) (symbol (']')) (Parser.manySepBy (value) (symbol (',')));
+        const object = between (symbol ('{')) (symbol ('}')) (Parser.manySepBy (keyValuePair) (symbol (',')));
+
+        test("null, true, false", () => {
+           const nullResult = null_ (CharStream.FromString("null"));
+           expect(nullResult).toBeInstanceOf(Success);
+           expect(nullResult.value).toBeNull();
+           
+           const nullWsResult = null_ (CharStream.FromString("null  "));
+           expect(nullWsResult).toBeInstanceOf(Success);
+           expect(nullWsResult.value).toBeNull();
+
+           const invalid = null_ (CharStream.FromString("nulll"));
+           expect(invalid).toBeInstanceOf(Failure);
+
+
+        });
+
+        test("Parse json", () => {    
             const parser = Parser.do ({ first: [ws], apply: value, then: [ws, Parser.eof] });
             const stream = CharStream.FromString('["abc", 5, 6, {"x": 5, "obj": { "arr": [1, [2]]}}]');
             
